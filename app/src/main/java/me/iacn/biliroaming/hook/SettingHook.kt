@@ -55,24 +55,6 @@ class SettingHook(classLoader: ClassLoader) : BaseHook(classLoader) {
                 }
         }
 
-        instance.homeCenters().forEach { (c, m) ->
-            c?.hookBeforeAllMethods(m) { param ->
-                @Suppress("UNCHECKED_CAST")
-                val list = param.args[1] as? MutableList<Any>
-                    ?: param.args[1]?.getObjectFieldOrNullAs<MutableList<Any>>("moreSectionList")
-                    ?: return@hookBeforeAllMethods
-
-                val itemList = list.lastOrNull()?.let {
-                    if (it.javaClass != instance.menuGroupItemClass) it.getObjectFieldOrNullAs<MutableList<Any>>(
-                        "itemList"
-                    ) else list
-                } ?: list
-
-                val item = instance.menuGroupItemClass?.new() ?: return@hookBeforeAllMethods
-                itemList.add(item)
-            }
-        }
-
         instance.settingRouterClass?.hookBeforeAllConstructors { param ->
             if (param.args[1] != SETTING_URI) return@hookBeforeAllConstructors
             val routerType = (param.method as Constructor<*>).parameterTypes[3]
