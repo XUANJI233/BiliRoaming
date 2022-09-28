@@ -38,14 +38,7 @@ class ProtoBufHook(classLoader: ClassLoader) : BaseHook(classLoader) {
             param.result ?: return@hookAfterMethod
             buildSet {
                 param.result.callMethodAs<List<*>?>("getRelatesList")
-                    ?.onEachIndexed { idx, r ->
-                        if (hidden && removeRelatePromote
-                            && (r?.callMethodAs<Long?>("getFromSourceType") == 2L ||
-                                    r?.callMethodAs<String?>("getGoto") == "cm")
-                        ) add(idx)
-                        if (hidden && removeRelatePromote && removeRelateOnlyAv
-                            && r?.callMethodAs<String?>("getGoto").let { it != "av" }
-                        ) add(idx)
+                    ?.onEachIndexed { idx, r -> add(idx)
                     }
             }.reversed().forEach {
                 param.result.callMethod("removeRelates", it)
