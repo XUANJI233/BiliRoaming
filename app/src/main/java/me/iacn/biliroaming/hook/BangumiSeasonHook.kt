@@ -614,6 +614,12 @@ class BangumiSeasonHook(classLoader: ClassLoader) : BaseHook(classLoader) {
             optJSONObject("follow_button")?.let {
                 followButton = followButton { reconstructFrom(it) }
             }
+            optJSONObject("style_label")?.let {
+                styleLabel = reasonStyle { reconstructFrom(it) }
+            }
+            for (badgeV2 in optJSONArray("badges_v2").orEmpty())
+                badgesV2 += reasonStyle { reconstructFrom(badgeV2) }
+            stylesV2 = optString("styles_v2")
         }
 
         fun SearchItemKt.Dsl.reconstructFrom(json: JSONObject) = json.run {
@@ -869,9 +875,12 @@ class BangumiSeasonHook(classLoader: ClassLoader) : BaseHook(classLoader) {
             build()
         }.query
 
+        BiliRoamingApi.getPagelist(av) ?: return null
+
+        Log.toast("发现区域限制视频，尝试解锁……")
+
         val content = BiliRoamingApi.getView(query)?.toJSONObject() ?: return null
-        val result = content.optJSONObject("v2_app_api")
-        if (result?.has("season") != true) return null
+        val result = content.optJSONObject("v2_app_api") ?: return null
 
         return viewReply {
             arc = arc {
@@ -921,23 +930,23 @@ class BangumiSeasonHook(classLoader: ClassLoader) : BaseHook(classLoader) {
                     typeName = optString("tname")
                     videos = optLong("videos")
                 }
-            }
-            bvid = result.optString("bvid")
-            season = season {
-                result.optJSONObject("season")?.run {
-                    allowDownload = "1"
-                    seasonId = optString("season_id").toLong()
-                    title = optString("title")
-                    cover = optString("cover")
-                    isFinish = optString("is_finish").toInt()
-                    newestEpIndex = optString("newest_ep_index")
-                    newestEpid = optString("newest_ep_id").toInt()
-                    totalCount = optString("total_count").toLong()
-                    weekday = optString("weekday").toInt()
-                    ovgPlayurl = optString("ogv_play_url")
-                    isJump = optInt("is_jump")
+                rights = rights {
+                    result.optJSONObject("rights")?.run {
+                        bp = optInt("bp")
+                        elec = optInt("elec")
+                        download = if (sPrefs.getBoolean("allow_download", false)) 1 else optInt("download")
+                        movie = optInt("movie")
+                        pay = optInt("pay")
+                        hd5 = optInt("hd5")
+                        noReprint = optInt("no_reprint")
+                        autoplay = optInt("autoplay")
+                        isCooperation = optInt("is_cooperation")
+                        ugcPay = optInt("ugc_pay")
+                        noBackground = if (sPrefs.getBoolean("play_arc_conf", false)) 0 else optInt("no_background")
+                    }
                 }
             }
+            bvid = result.optString("bvid")
             val pages = result.optJSONArray("pages")
             for (page in pages.orEmpty()) {
                 this.pages += viewPage {
@@ -984,6 +993,47 @@ class BangumiSeasonHook(classLoader: ClassLoader) : BaseHook(classLoader) {
                         tagType = optString("tag_type")
                         uri = optString("uri")
                     }
+                }
+            }
+            ownerExt = ownerExt {
+                result.optJSONObject("owner_ext")?.run {
+                    officialVerify = officialVerify {
+                        optJSONObject("official_verify")?.run {
+                            type = optInt("type")
+                            desc = optString("desc")
+                        }
+                    }
+                    vip = vip {
+                        optJSONObject("vip")?.run {
+                            vipType = optInt("vipType")
+                            dueDate = optLong("vipDueDate")
+                            dueRemark = optString("dueRemark")
+                            accessStatus = optInt("accessStatus")
+                            vipStatus = optInt("vipStatus")
+                            vipStatusWarn = optString("vipStatusWarn")
+                            themeType = optInt("themeType")
+                            label = vipLabel {
+                                optJSONObject("label")?.run {
+                                    path = optString("path")
+                                    text = optString("text")
+                                    labelTheme = optString("label_theme")
+                                }
+                            }
+                        }
+                    }
+                    fans = optLong("fans")
+                    arcCount = optString("arc_count")
+                }
+            }
+            config = config {
+                result.optJSONObject("config")?.run {
+                    relatesTitle = optString("relates_title")
+                    abtestSmallWindow = optString("abtest_small_window")
+                    recThreePointStyle = optInt("rec_three_point_style")
+                    isAbsoluteTime = optBoolean("is_absolute_time")
+                    relatesFeedStyle = optString("feed_style")
+                    relatesFeedHasNext = optBoolean("feed_has_next")
+                    localPlay = optInt("local_play")
                 }
             }
         }
