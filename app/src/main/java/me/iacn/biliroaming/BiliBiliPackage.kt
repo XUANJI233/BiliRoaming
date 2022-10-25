@@ -139,6 +139,7 @@ class BiliBiliPackage constructor(private val mClassLoader: ClassLoader, mContex
     val mediaTypeClass by Weak { mHookInfo.okHttp.mediaType.class_ from mClassLoader }
     val biliCallClass by Weak { mHookInfo.biliCall.class_ from mClassLoader }
     val parserClass by Weak { mHookInfo.biliCall.parser from mClassLoader }
+    val livePagerRecyclerViewClass by Weak { mHookInfo.livePagerRecyclerView from mClassLoader }
 
     val ids: Map<String, Int> by lazy {
         mHookInfo.mapIds.idsMap
@@ -537,10 +538,10 @@ class BiliBiliPackage constructor(private val mClassLoader: ClassLoader, mContex
             }
             biliAccounts = biliAccounts {
                 val biliAccountsClass = dexHelper.findMethodUsingString(
-                    "authorization_code",
+                    "refresh token error",
                     false,
                     -1,
-                    -1,
+                    0,
                     null,
                     -1,
                     null,
@@ -738,7 +739,8 @@ class BiliBiliPackage constructor(private val mClassLoader: ClassLoader, mContex
                 val progressBarClass = "tv.danmaku.biliplayer.view.RingProgressBar" from classloader
                     ?: "com.bilibili.playerbizcommon.view.RingProgressBar" from classloader
                 val sectionClass = classesList.filter {
-                    it.startsWith("tv.danmaku.bili.ui.video.section")
+                    it.startsWith("tv.danmaku.bili.ui.video.section") ||
+                            it.startsWith("tv.danmaku.bili.ui.video.profile.action")
                 }.firstNotNullOfOrNull { c ->
                     c.findClass(classloader).takeIf {
                         it.declaredFields.any { f -> f.type == progressBarClass }
@@ -1803,6 +1805,14 @@ class BiliBiliPackage constructor(private val mClassLoader: ClassLoader, mContex
                 } ?: return@let
                 onOperateClick = method { name = it.name }
                 getContentString = method { name = getContentStringMethod.name }
+            }
+            livePagerRecyclerView = class_ {
+                val liveVerticalPagerView =
+                    "com.bilibili.bililive.room.ui.roomv3.vertical.widget.LiveVerticalPagerView"
+                        .from(classloader) ?: return@class_
+                name = liveVerticalPagerView.declaredFields.find {
+                    View::class.java.isAssignableFrom(it.type)
+                }?.type?.name ?: return@class_
             }
 
             dexHelper.close()
