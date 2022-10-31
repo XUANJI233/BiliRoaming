@@ -2,14 +2,21 @@ package me.iacn.biliroaming.hook
 
 import android.graphics.BlurMaskFilter
 import android.graphics.Color
+import android.graphics.Path
 import android.graphics.Rect
 import android.graphics.Typeface
 import android.net.Uri
+import android.text.Layout
 import android.text.SpannableString
+import android.text.StaticLayout
+import android.text.TextPaint
 import android.text.style.AbsoluteSizeSpan
 import android.text.style.LineBackgroundSpan
 import android.text.style.MaskFilterSpan
 import android.text.style.StyleSpan
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 import me.iacn.biliroaming.*
 import me.iacn.biliroaming.API.*
 import me.iacn.biliroaming.BiliBiliPackage.Companion.instance
@@ -18,15 +25,19 @@ import me.iacn.biliroaming.hook.BangumiSeasonHook.Companion.lastSeasonInfo
 import me.iacn.biliroaming.hook.BangumiPlayUrlHook.Companion.countDownLatch
 import me.iacn.biliroaming.utils.*
 import org.json.JSONArray
+import java.io.File
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import kotlin.math.ceil
 import kotlin.math.roundToInt
 
 
 class SubtitleHook(classLoader: ClassLoader) : BaseHook(classLoader) {
     companion object {
+        val fontFile by lazy { File(currentContext.getExternalFilesDir(null), "subtitle.font") }
+
         val backgroundSpan = { backgroundColor: Int, textSize: Int ->
             LineBackgroundSpan { canvas, paint, left, right, top, _, bottom, text, start, end, _ ->
                 val ts = paint.textSize
@@ -108,13 +119,35 @@ class SubtitleHook(classLoader: ClassLoader) : BaseHook(classLoader) {
     private val mainFunc by lazy { sPrefs.getBoolean("main_func", false) }
     private val generateSubtitle by lazy { sPrefs.getBoolean("auto_generate_subtitle", false) }
     private val addCloseSubtitle by lazy { mainFunc && getVersionCode(packageName) >= 6750300 }
+    private val customSubtitle by lazy { sPrefs.getBoolean("custom_subtitle", false) }
+    private val removeBg by lazy { sPrefs.getBoolean("subtitle_remove_bg", true) }
+    private val boldText by lazy { sPrefs.getBoolean("subtitle_bold", true) }
+    private val fontSizePortrait by lazy { sPrefs.getInt("subtitle_font_size_portrait", 0).sp }
+    private val fontSizeLandscape by lazy { sPrefs.getInt("subtitle_font_size_landscape", 0).sp }
+    private val fillColor by lazy {
+        sPrefs.getString("subtitle_font_color2", null)
+            ?.runCatchingOrNull { Color.parseColor("#$this") } ?: Color.WHITE
+    }
+    private val strokeColor by lazy {
+        sPrefs.getString("subtitle_stroke_color", null)
+            ?.runCatchingOrNull { Color.parseColor("#$this") } ?: Color.BLACK
+    }
+    private val strokeWidth by lazy {
+        sPrefs.getFloat("subtitle_stroke_width", 5.0F)
+    }
 
     private val closeText =
         currentContext.getString(getResId("Player_option_subtitle_lan_doc_nodisplay", "string"))
 
+    private var subtitleFont: Typeface? = null
+
     override fun startHook() {
-        if (sPrefs.getBoolean("custom_subtitle", false))
-            hookSubtitleStyle()
+        if (customSubtitle)
+            if (instance.cronCanvasClass == null) {
+                hookSubtitleStyle()
+            } else {
+                hookSubtitleStyleNew()
+            }
         if (mainFunc || generateSubtitle)
             hookSubtitleList()
     }
@@ -159,6 +192,96 @@ class SubtitleHook(classLoader: ClassLoader) : BaseHook(classLoader) {
                     sPrefs.getBoolean("subtitle_fix_break", false)
                 )
                 param.result = null
+            }
+        }
+    }
+
+    private fun hookSubtitleStyleNew() {
+        val cronCanvasClass = instance.cronCanvasClass ?: return
+        if (removeBg) {
+            cronCanvasClass.replaceMethod(
+                "drawPath",
+                Path::class.java,
+                Boolean::class.javaPrimitiveType
+            ) { null }
+        }
+        val paintField = cronCanvasClass.getDeclaredField("paint")
+            .apply { isAccessible = true }
+        val fillColorField = cronCanvasClass.getDeclaredField("fillColor")
+            .apply { isAccessible = true }
+        val strokeColorField = cronCanvasClass.getDeclaredField("strokeColor")
+            .apply { isAccessible = true }
+        val maxWidthField = cronCanvasClass.getDeclaredField("maxWidth")
+            .apply { isAccessible = true }
+        val staticLayoutField = cronCanvasClass.getDeclaredField("staticLayout")
+            .apply { isAccessible = true }
+        val alignmentField = cronCanvasClass.getDeclaredField("alignment")
+            .apply { isAccessible = true }
+        val measureTextFromLayoutMethod = cronCanvasClass.getDeclaredMethod(
+            "measureTextFromLayout", StaticLayout::class.java
+        ).apply { isAccessible = true }
+        MainScope().launch(Dispatchers.IO) {
+            subtitleFont = if (fontFile.isFile) {
+                Typeface.createFromFile(fontFile)
+            } else null
+        }
+        cronCanvasClass.hookBeforeMethod(
+            "measureTextImpl",
+            String::class.java
+        ) { param ->
+            val cronCanvas = param.thisObject
+            val maxWidth = maxWidthField.getFloat(cronCanvas)
+            if (maxWidth != 0.0F) {
+                val paint = paintField.get(cronCanvas) as TextPaint
+                paint.strokeWidth = strokeWidth
+                paint.isFakeBoldText = boldText
+                subtitleFont?.let { paint.typeface = it }
+                if (currentIsLandscape && fontSizeLandscape > 0) {
+                    paint.textSize = fontSizeLandscape.toFloat()
+                } else if (!currentIsLandscape && fontSizePortrait > 0) {
+                    paint.textSize = fontSizePortrait.toFloat()
+                }
+                val text = param.args[0] as String
+                val alignment = alignmentField.get(cronCanvas) as Layout.Alignment
+                val staticLayout = staticLayoutField.get(cronCanvas) as? StaticLayout
+                if (staticLayout != null && staticLayout.text == text) {
+                    param.result = measureTextFromLayoutMethod(null, staticLayout)
+                } else {
+                    val wantWidth = if (maxWidth <= 0.0F) Int.MAX_VALUE
+                    else maxWidth.toInt().coerceAtMost(Int.MAX_VALUE)
+                    var layout = StaticLayout.Builder
+                        .obtain(text, 0, text.length, paint, wantWidth)
+                        .setAlignment(alignment)
+                        .setIncludePad(false)
+                        .build()
+                    val lineMaxWidth = IntRange(0, layout.lineCount - 1).maxOfOrNull {
+                        ceil(layout.getLineWidth(it)).toInt()
+                    } ?: 0
+                    layout = StaticLayout.Builder
+                        .obtain(text, 0, text.length, paint, lineMaxWidth)
+                        .setAlignment(alignment)
+                        .setIncludePad(false)
+                        .build()
+                    staticLayoutField.set(cronCanvas, layout)
+                    param.result = measureTextFromLayoutMethod(null, layout)
+                }
+            }
+        }
+        cronCanvasClass.hookBeforeMethod(
+            "drawText",
+            String::class.java,
+            Float::class.javaPrimitiveType,
+            Float::class.javaPrimitiveType,
+            Boolean::class.javaPrimitiveType
+        ) { param ->
+            val cronCanvas = param.thisObject
+            val maxWidth = maxWidthField.getFloat(cronCanvas)
+            if (maxWidth != 0.0F) {
+                fillColorField.setInt(cronCanvas, fillColor)
+                strokeColorField.setInt(cronCanvas, strokeColor)
+                param.args[3] = true
+                param.invokeOriginalMethod()
+                param.args[3] = false
             }
         }
     }
