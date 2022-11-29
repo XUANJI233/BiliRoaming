@@ -13,6 +13,9 @@ class JsonHook(classLoader: ClassLoader) : BaseHook(classLoader) {
     override fun startHook() {
         Log.d("startHook: Json")
 
+        val hidden = sPrefs.getBoolean("hidden", false)
+        val purifyLivePopups = sPrefs.getStringSet("purify_live_popups", null) ?: setOf()
+
         val tabResponseClass =
             "tv.danmaku.bili.ui.main2.resource.MainResourceManager\$TabResponse".findClassOrNull(
                 mClassLoader
@@ -45,6 +48,21 @@ class JsonHook(classLoader: ClassLoader) : BaseHook(classLoader) {
             "tv.danmaku.bili.ui.offline.api.OgvApiResponse".findClassOrNull(mClassLoader)
         val dmAdvertClass =
             "com.bilibili.ad.adview.videodetail.danmakuv2.model.DmAdvert".from(mClassLoader)
+        val liveShoppingInfoClass =
+            "com.bilibili.bililive.room.biz.shopping.beans.LiveShoppingInfo".from(mClassLoader)
+        val liveGoodsCardInfoClass =
+            "com.bilibili.bililive.room.biz.shopping.beans.LiveGoodsCardInfo".from(mClassLoader)
+        val biliLiveRoomInfoClass =
+            "com.bilibili.bililive.videoliveplayer.net.beans.gateway.roominfo.BiliLiveRoomInfo"
+                .from(mClassLoader)
+        val liveRoomReserveInfoClass =
+            "com.bilibili.bililive.room.biz.reverse.bean.LiveRoomReserveInfo".from(mClassLoader)
+        val biliLiveRoomUserInfoClass =
+            "com.bilibili.bililive.videoliveplayer.net.beans.gateway.userinfo.BiliLiveRoomUserInfo"
+                .from(mClassLoader)
+        val liveRoomRecommendCardClass =
+            "com.bilibili.bililive.videoliveplayer.net.beans.attentioncard.LiveRoomRecommendCard"
+                .from(mClassLoader)
 
         instance.fastJsonClass?.hookAfterMethod(
             instance.fastJsonParse(),
@@ -85,189 +103,7 @@ class JsonHook(classLoader: ClassLoader) : BaseHook(classLoader) {
                         }
                     }
 
-                    // 在首页标签添加大陆/港澳台番剧分页
-                    if (sPrefs.getBoolean("add_bangumi", false)) {
-                        val tab = data?.getObjectFieldAs<MutableList<Any>>("tab")
-                        val hasBangumiCN = tab?.fold(false) { acc, it ->
-                            val uri = it.getObjectFieldAs<String>("uri")
-                            acc || uri.endsWith("bilibili://pgc/home")
-                        }
-                        val hasBangumiTW = tab?.fold(false) { acc, it ->
-                            val uri = it.getObjectFieldAs<String>("uri")
-                            acc || uri.startsWith("bilibili://following/home_activity_tab/6544")
-                        }
-                        // 添加大陆番剧分页
-                        if (hasBangumiCN != null && !hasBangumiCN) {
-                            val bangumiCN = tabClass?.new()
-                                ?.setObjectField("tabId", "50")
-                                ?.setObjectField("name", "追番（大陸）")
-                                ?.setObjectField("uri", "bilibili://pgc/home")
-                                ?.setObjectField("reportId", "bangumi")
-                                ?.setIntField("pos", 50)
-                            bangumiCN?.let { l ->
-                                tab.forEach {
-                                    it.setIntField("pos", it.getIntField("pos") + 0)
-                                }
-                                tab.add(0, l)
-                            }
-                        }
-                        // 添加港澳台番剧分页
-                        if (hasBangumiTW != null && !hasBangumiTW) {
-                            val bangumiTW = tabClass?.new()
-                                ?.setObjectField("tabId", "60")
-                                ?.setObjectField("name", "追番（港澳台）")
-                                ?.setObjectField(
-                                    "uri",
-                                    "bilibili://following/home_activity_tab/6544"
-                                )
-                                ?.setObjectField("reportId", "bangumi")
-                                ?.setIntField("pos", 60)
-                            bangumiTW?.let { l ->
-                                tab.forEach {
-                                    it.setIntField("pos", it.getIntField("pos") + 0)
-                                }
-                                tab.add(0, l)
-                            }
-                        }
-                    }
-
-                    // 在首页标签添加大陆/港澳台影视分页
-                    if (sPrefs.getBoolean("add_movie", false)) {
-                        val tab = data?.getObjectFieldAs<MutableList<Any>>("tab")
-                        val hasMovieCN = tab?.fold(false) { acc, it ->
-                            val uri = it.getObjectFieldAs<String>("uri")
-                            acc || uri.startsWith("bilibili://pgc/home?home_flow_type=2")
-                        }
-                        val hasMovieTW = tab?.fold(false) { acc, it ->
-                            val uri = it.getObjectFieldAs<String>("uri")
-                            acc || uri.startsWith("bilibili://following/home_activity_tab/168644")
-                        }
-                        // 添加大陆影视分页
-                        if (hasMovieCN != null && !hasMovieCN) {
-                            val movieCN = tabClass?.new()
-                                ?.setObjectField("tabId", "70")
-                                ?.setObjectField("name", "影視（大陸）")
-                                ?.setObjectField("uri", "bilibili://pgc/home?home_flow_type=2")
-                                ?.setObjectField("reportId", "film")
-                                ?.setIntField("pos", 70)
-                            movieCN?.let { l ->
-                                tab.forEach {
-                                    it.setIntField("pos", it.getIntField("pos") + 0)
-                                }
-                                tab.add(0, l)
-                            }
-                        }
-                        // 添加港澳台影视分页
-                        if (hasMovieTW != null && !hasMovieTW) {
-                            // 为概念版特别适配
-                            if (hasMovieCN != null && !hasMovieCN && platform != "android_b") {
-                                val movieTW = tabClass?.new()
-                                    ?.setObjectField("tabId", "40")
-                                    ?.setObjectField("name", "戲劇")
-                                    ?.setObjectField(
-                                        "uri",
-                                        "bilibili://following/home_activity_tab/168644"
-                                    )
-                                    ?.setObjectField("reportId", "jptv")
-                                    ?.setIntField("pos", 40)
-                                movieTW?.let { l ->
-                                    tab.forEach {
-                                        it.setIntField("pos", it.getIntField("pos") + 0)
-                                    }
-                                    tab.add(0, l)
-                                }
-                            } else {
-                                val movieTW = tabClass?.new()
-                                    ?.setObjectField("tabId", "80")
-                                    ?.setObjectField("name", "戏剧（港澳台）")
-                                    ?.setObjectField(
-                                        "uri",
-                                        "bilibili://following/home_activity_tab/168644"
-                                    )
-                                    ?.setObjectField("reportId", "jptv")
-                                    ?.setIntField("pos", 80)
-                                movieTW?.let { l ->
-                                    tab.forEach {
-                                        it.setIntField("pos", it.getIntField("pos") + 0)
-                                    }
-                                    tab.add(0, l)
-                                }
-                            }
-                        }
-                    }
-
-                    // 在首页标签添加港澳/台湾韩综分页
-                    if (sPrefs.getBoolean("add_korea", false)) {
-                        val tab = data?.getObjectFieldAs<MutableList<Any>>("tab")
-                        val hasKoreaHK = tab?.fold(false) { acc, it ->
-                            val uri = it.getObjectFieldAs<String>("uri")
-                            acc || uri.startsWith("bilibili://following/home_activity_tab/163541")
-                        }
-                        val hasKoreaTW = tab?.fold(false) { acc, it ->
-                            val uri = it.getObjectFieldAs<String>("uri")
-                            acc || uri.startsWith("bilibili://following/home_activity_tab/95636")
-                        }
-                        // 添加港澳韩综分页
-                        if (hasKoreaHK != null && !hasKoreaHK) {
-                            val koreaHK = tabClass?.new()
-                                ?.setObjectField("tabId", "803")
-                                ?.setObjectField("name", "韩综（港澳）")
-                                ?.setObjectField("uri", "bilibili://following/home_activity_tab/163541")
-                                ?.setObjectField("reportId", "koreavhk")
-                                ?.setIntField("pos", 803)
-                            koreaHK?.let { l ->
-                                tab.forEach {
-                                    it.setIntField("pos", it.getIntField("pos") + 0)
-                                }
-                                tab.add(0, l)
-                            }
-                        }
-                        // 添加台湾韩综分页
-                        if (hasKoreaTW != null && !hasKoreaTW) {
-                            val koreaTW = tabClass?.new()
-                                ?.setObjectField("tabId", "804")
-                                ?.setObjectField("name", "韩综（台湾）")
-                                ?.setObjectField("uri", "bilibili://following/home_activity_tab/95636")
-                                ?.setObjectField("reportId", "koreavtw")
-                                ?.setIntField("pos", 804)
-                            koreaTW?.let { l ->
-                                tab.forEach {
-                                    it.setIntField("pos", it.getIntField("pos") + 0)
-                                }
-                                tab.add(0, l)
-                            }
-                        }
-                    }
-
-                    if (sPrefs.getStringSet("customize_home_tab", emptySet())
-                            ?.isNotEmpty() == true
-                    ) {
-                        val tab = data?.getObjectFieldAs<MutableList<Any>>("tab")
-                        val purifytabset =
-                            sPrefs.getStringSet("customize_home_tab", emptySet()).orEmpty()
-                        tab?.removeAll {
-                            it.getObjectFieldAs<String>("uri").run {
-                                when {
-                                    this == "bilibili://live/home" -> purifytabset.contains("live")
-                                    this == "bilibili://pegasus/promo" -> purifytabset.contains("promo")
-                                    this == "bilibili://pegasus/hottopic" -> purifytabset.contains("hottopic")
-                                    this == "bilibili://pgc/home" || this == "bilibili://following/home_activity_tab/6544" -> purifytabset.contains(
-                                        "bangumi"
-                                    )
-                                    this == "bilibili://pgc/home?home_flow_type=2" || this == "bilibili://following/home_activity_tab/168644" -> purifytabset.contains(
-                                        "movie"
-                                    )
-                                    this == "bilibili://following/home_activity_tab/95636" || this == "bilibili://following/home_activity_tab/163541" -> purifytabset.contains(
-                                        "korea"
-                                    )
-                                    startsWith("bilibili://pegasus/op/") || startsWith("bilibili://following/home_activity_tab") -> purifytabset.contains(
-                                        "activity"
-                                    )
-                                    else -> purifytabset.contains("other_tabs")
-                                }
-                            }
-                        }
-                    }
+                    configTab(data, tabClass)
 
                     if (sPrefs.getBoolean("purify_game", false) &&
                         sPrefs.getBoolean("hidden", false)
@@ -287,7 +123,7 @@ class JsonHook(classLoader: ClassLoader) : BaseHook(classLoader) {
                         listOf(result.getObjectFieldOrNullAs<MutableList<*>?>("padSectionList"),
                                result.getObjectFieldOrNullAs<MutableList<*>?>("recommendSectionList"),
                                result.getObjectFieldOrNullAs<MutableList<*>?>("moreSectionList")
-                        ).forEach { it ->
+                        ).forEach {
                             it?.removeAll { items ->
                                 // 分析内容
                                 val title = items?.getObjectFieldAs<String>("title")
@@ -407,7 +243,7 @@ class JsonHook(classLoader: ClassLoader) : BaseHook(classLoader) {
                     sPrefs.getBoolean("hidden", false)
                 ) {
                     result.javaClass.fields.forEach {
-                        if (it.type != Int::class.javaPrimitiveType)
+                        if (!it.type.isPrimitive)
                             result.setObjectField(it.name, null)
                     }
                 }
@@ -506,6 +342,175 @@ class JsonHook(classLoader: ClassLoader) : BaseHook(classLoader) {
                             )
                         }
                     }
+            }
+        }
+
+        instance.fastJsonClass?.hookAfterMethod(
+            instance.fastJsonParse(),
+            String::class.java,
+            Type::class.java,
+            "com.alibaba.fastjson.parser.Feature[]"
+        ) { param ->
+            var result = param.result ?: return@hookAfterMethod
+            if (result.javaClass == instance.generalResponseClass)
+                result = result.getObjectField("data") ?: return@hookAfterMethod
+
+            when (result.javaClass) {
+                liveShoppingInfoClass -> {
+                    if (hidden && purifyLivePopups.contains("shoppingCard"))
+                        result.setObjectField("shoppingCardDetail", null)
+                    if (hidden && purifyLivePopups.contains("shoppingSelected"))
+                        result.runCatchingOrNull {
+                            setObjectField("selectedGoods", null)
+                        }
+                }
+
+                liveGoodsCardInfoClass -> {
+                    if (hidden && purifyLivePopups.contains("shoppingCard"))
+                        param.result = null
+                }
+
+                biliLiveRoomInfoClass -> {
+                    if (hidden && purifyLivePopups.contains("follow"))
+                        result.getObjectFieldOrNull("functionCard")
+                            ?.setObjectField("followCard", null)
+                    if (hidden && purifyLivePopups.contains("banner"))
+                        result.setObjectField("bannerInfo", null)
+                }
+
+                liveRoomRecommendCardClass -> {
+                    if (hidden && purifyLivePopups.contains("follow"))
+                        param.result = null
+                }
+
+                liveRoomReserveInfoClass -> {
+                    if (hidden && purifyLivePopups.contains("reserve"))
+                        result.setBooleanField("showReserveDetail", false)
+                }
+
+                biliLiveRoomUserInfoClass -> {
+                    if (hidden && purifyLivePopups.contains("gift"))
+                        result.getObjectFieldOrNull("functionCard")
+                            ?.setObjectField("sengGiftCard", null)
+                    if (hidden && purifyLivePopups.contains("task"))
+                        result.runCatchingOrNull {
+                            setObjectField("taskInfo", null)
+                        }
+                }
+            }
+        }
+    }
+
+    private fun configTab(data: Any?, tabClass: Class<*>?) {
+        val tab = data?.getObjectFieldAs<MutableList<Any>>("tab") ?: return
+        if (tabClass == null) return
+
+        var hasBangumiCN = false
+        var hasBangumiTW = false
+        var hasMovieCN = false
+        var hasMovieTW = false
+        var hasKoreaHK = false
+        var hasKoreaTW = false
+        tab.forEach {
+            when (it.getObjectFieldAs<String>("uri")) {
+                "bilibili://pgc/home" -> hasBangumiCN = true
+                "bilibili://following/home_activity_tab/6544" -> hasBangumiTW = true
+                "bilibili://pgc/home?home_flow_type=2" -> hasMovieCN = true
+                "bilibili://following/home_activity_tab/168644" -> hasMovieTW = true
+                "bilibili://following/home_activity_tab/163541" -> hasKoreaHK = true
+                "bilibili://following/home_activity_tab/95636" -> hasKoreaTW = true
+            }
+        }
+
+        if (sPrefs.getBoolean("add_bangumi", false)) {
+            if (!hasBangumiCN) {
+                val bangumiCN = tabClass.new()
+                    .setObjectField("tabId", "50")
+                    .setObjectField("name", "追番（大陸）")
+                    .setObjectField("uri", "bilibili://pgc/home")
+                    .setObjectField("reportId", "bangumi")
+                    .setIntField("pos", 50)
+                tab.add(bangumiCN)
+            }
+            if (!hasBangumiTW) {
+                val bangumiTW = tabClass.new()
+                    .setObjectField("tabId", "60")
+                    .setObjectField("name", "追番（港澳台）")
+                    .setObjectField("uri", "bilibili://following/home_activity_tab/6544")
+                    .setObjectField("reportId", "bangumi")
+                    .setIntField("pos", 60)
+                tab.add(bangumiTW)
+            }
+        }
+
+        if (sPrefs.getBoolean("add_movie", false)) {
+            if (!hasMovieCN) {
+                val movieCN = tabClass.new()
+                    .setObjectField("tabId", "70")
+                    .setObjectField("name", "影視（大陸）")
+                    .setObjectField("uri", "bilibili://pgc/home?home_flow_type=2")
+                    .setObjectField("reportId", "film")
+                    .setIntField("pos", 70)
+                tab.add(movieCN)
+            }
+            if (!hasMovieTW) {
+                val movieTW = tabClass.new()
+                    .setObjectField("tabId", "80")
+                    .setObjectField("name", "戏剧（港澳台）")
+                    .setObjectField("uri", "bilibili://following/home_activity_tab/168644")
+                    .setObjectField("reportId", "jptv")
+                    .setIntField("pos", 80)
+                tab.add(movieTW)
+            }
+        }
+
+        if (sPrefs.getBoolean("add_korea", false)) {
+            if (!hasKoreaHK) {
+                val koreaHK = tabClass.new()
+                    .setObjectField("tabId", "803")
+                    .setObjectField("name", "韩综（港澳）")
+                    .setObjectField("uri", "bilibili://following/home_activity_tab/163541")
+                    .setObjectField("reportId", "koreavhk")
+                    .setIntField("pos", 803)
+                tab.add(koreaHK)
+            }
+            if (!hasKoreaTW) {
+                val koreaTW = tabClass.new()
+                    .setObjectField("tabId", "804")
+                    .setObjectField("name", "韩综（台湾）")
+                    .setObjectField("uri", "bilibili://following/home_activity_tab/95636")
+                    .setObjectField("reportId", "koreavtw")
+                    .setIntField("pos", 804)
+                tab.add(koreaTW)
+            }
+        }
+
+        val purifytabset = sPrefs.getStringSet("customize_home_tab", emptySet())!!
+        if (purifytabset.isEmpty()) return
+        tab.removeAll {
+            when (it.getObjectFieldAs<String>("uri")) {
+                "bilibili://live/home"
+                -> purifytabset.contains("live")
+
+                "bilibili://pegasus/promo"
+                -> purifytabset.contains("promo")
+
+                "bilibili://pegasus/hottopic"
+                -> purifytabset.contains("hottopic")
+
+                "bilibili://pgc/home",
+                "bilibili://following/home_activity_tab/6544"
+                -> purifytabset.contains("bangumi")
+
+                "bilibili://pgc/home?home_flow_type=2",
+                "bilibili://following/home_activity_tab/168644"
+                -> purifytabset.contains("movie")
+
+                "bilibili://following/home_activity_tab/95636",
+                "bilibili://following/home_activity_tab/163541"
+                -> purifytabset.contains("korea")
+
+                else -> purifytabset.contains("other_tabs")
             }
         }
     }

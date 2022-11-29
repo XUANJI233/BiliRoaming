@@ -11,6 +11,8 @@ class DynamicHook(classLoader: ClassLoader) : BaseHook(classLoader) {
     private val purifyContents by lazy {
         sPrefs.getStringSet("customize_dynamic_keyword_content", null) ?: setOf()
     }
+    private val purifyContentRegexes by lazy { purifyContents.map { it.toRegex() } }
+    private val contentRegexMode by lazy { sPrefs.getBoolean("dynamic_content_regex_mode", false) }
     private val purifyUpNames by lazy {
         sPrefs.getStringSet("customize_dynamic_keyword_upname", null) ?: setOf()
     }
@@ -75,9 +77,7 @@ class DynamicHook(classLoader: ClassLoader) : BaseHook(classLoader) {
                 "dynRed",
                 "com.bapis.bilibili.app.dynamic.v1.DynRedReq"
             ) { param ->
-                param.result?.run {
-                    callMethod("setDefaultTab", "video")
-                }
+                param.result?.callMethod("setDefaultTab", "video")
             }
         }
     }
@@ -88,11 +88,12 @@ class DynamicHook(classLoader: ClassLoader) : BaseHook(classLoader) {
         val contentList = dynamicList.callMethodAs<List<*>?>("getListList")
             ?: return
         val idxList = mutableSetOf<Int>()
-        contentList.forEachIndexed { idx, e ->
+        for ((idx, e) in contentList.withIndex()) {
             if (purifyTypes.isNotEmpty()) {
                 val cardType = e?.callMethodAs("getCardTypeValue") ?: -1
                 if (purifyTypes.contains(cardType)) {
                     idxList.add(idx)
+                    continue
                 }
             }
 
@@ -102,8 +103,12 @@ class DynamicHook(classLoader: ClassLoader) : BaseHook(classLoader) {
                         it?.callMethod("getModuleDesc")
                             ?.callMethodAs<String?>("getText") ?: ""
                     } ?: ""
-                if (modulesText.isNotEmpty() && purifyContents.any { modulesText.contains(it) }) {
+                if (modulesText.isNotEmpty() && if (contentRegexMode)
+                        purifyContentRegexes.any { modulesText.contains(it) }
+                    else purifyContents.any { modulesText.contains(it) }
+                ) {
                     idxList.add(idx)
+                    continue
                 }
             }
 
@@ -115,8 +120,12 @@ class DynamicHook(classLoader: ClassLoader) : BaseHook(classLoader) {
                     ?.joinToString(separator = "") {
                         it?.callMethodAs<String?>("getOrigText") ?: ""
                     } ?: ""
-                if (contentOrig.isNotEmpty() && purifyContents.any { contentOrig.contains(it) }) {
+                if (contentOrig.isNotEmpty() && if (contentRegexMode)
+                        purifyContentRegexes.any { contentOrig.contains(it) }
+                    else purifyContents.any { contentOrig.contains(it) }
+                ) {
                     idxList.add(idx)
+                    continue
                 }
             }
 
@@ -126,8 +135,12 @@ class DynamicHook(classLoader: ClassLoader) : BaseHook(classLoader) {
                     ?.joinToString(separator = "") {
                         it?.callMethodAs<String?>("getOrigText") ?: ""
                     } ?: ""
-                if (content.isNotEmpty() && purifyContents.any { content.contains(it) }) {
+                if (content.isNotEmpty() && if (contentRegexMode)
+                        purifyContentRegexes.any { content.contains(it) }
+                    else purifyContents.any { content.contains(it) }
+                ) {
                     idxList.add(idx)
+                    continue
                 }
             }
 
@@ -135,6 +148,7 @@ class DynamicHook(classLoader: ClassLoader) : BaseHook(classLoader) {
                 val origName = extend?.callMethodAs("getOrigName") ?: ""
                 if (origName.isNotEmpty() && purifyUpNames.any { origName == it }) {
                     idxList.add(idx)
+                    continue
                 }
             }
 
@@ -142,6 +156,7 @@ class DynamicHook(classLoader: ClassLoader) : BaseHook(classLoader) {
                 val uid = extend?.callMethodAs("getUid") ?: 0L
                 if (uid > 0L && purifyUidList.any { uid == it }) {
                     idxList.add(idx)
+                    continue
                 }
             }
         }

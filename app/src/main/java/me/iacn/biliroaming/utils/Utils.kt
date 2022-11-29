@@ -234,6 +234,7 @@ fun GeneratedMessageLite<*, *>.print(indent: Int = 0): String {
                 sb.appendLine(name)
                 sb.append(v.print(indent + 1))
             }
+
             is List<*> -> {
                 for (vv in v) {
                     sb.append(name)
@@ -242,12 +243,14 @@ fun GeneratedMessageLite<*, *>.print(indent: Int = 0): String {
                             sb.appendLine()
                             sb.append(vv.print(indent + 1))
                         }
+
                         else -> {
                             sb.appendLine(vv?.toString() ?: "null")
                         }
                     }
                 }
             }
+
             else -> {
                 sb.append(name)
                 sb.appendLine(v?.toString() ?: "null")
@@ -278,17 +281,17 @@ fun View.addBackgroundRipple() = with(TypedValue()) {
 fun migrateHomeFilterPrefsIfNeeded() {
     if (!sPrefs.getBoolean("home_filter_prefs_migrated", false)) {
         val titleList = sPrefs.getString("keywords_filter_title_recommend_list", null)
-            ?.split('|')?.filter { it.trim().isNotEmpty() }?.toSet()
+            ?.split('|')?.filter { it.isNotBlank() }?.toSet()
         val reasonList = sPrefs.getString("keywords_filter_reason_recommend_list", null)
-            ?.split('|')?.filter { it.trim().isNotEmpty() }?.toSet()
+            ?.split('|')?.filter { it.isNotBlank() }?.toSet()
         val uidList = sPrefs.getString("keywords_filter_uid_recommend_list", null)
-            ?.split('|')?.filter { it.trim().isNotEmpty() }?.toSet()
+            ?.split('|')?.filter { it.isNotBlank() }?.toSet()
         val upList = sPrefs.getString("keywords_filter_upname_recommend_list", null)
-            ?.split('|')?.filter { it.trim().isNotEmpty() }?.toSet()
+            ?.split('|')?.filter { it.isNotBlank() }?.toSet()
         val categoryList = sPrefs.getString("keywords_filter_rname_recommend_list", null)
-            ?.split('|')?.filter { it.trim().isNotEmpty() }?.toSet()
+            ?.split('|')?.filter { it.isNotBlank() }?.toSet()
         val channelList = sPrefs.getString("keywords_filter_tname_recommend_list", null)
-            ?.split('|')?.filter { it.trim().isNotEmpty() }?.toSet()
+            ?.split('|')?.filter { it.isNotBlank() }?.toSet()
 
         sPrefs.edit().apply {
             putStringSet("home_filter_keywords_title", titleList)
@@ -335,6 +338,13 @@ fun Window.blurBackground() {
 val Int.sp: Int
     inline get() = TypedValue.applyDimension(
         TypedValue.COMPLEX_UNIT_SP,
+        toFloat(),
+        currentContext.resources.displayMetrics
+    ).roundToInt()
+
+val Int.dp: Int
+    inline get() = TypedValue.applyDimension(
+        TypedValue.COMPLEX_UNIT_DIP,
         toFloat(),
         currentContext.resources.displayMetrics
     ).roundToInt()

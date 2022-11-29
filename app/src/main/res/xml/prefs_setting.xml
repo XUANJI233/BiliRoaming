@@ -174,6 +174,11 @@
             android:key="forbid_player_long_click_accelerate"
             android:summary="@string/forbid_player_long_click_accelerate_summary"
             android:title="@string/forbid_player_long_click_accelerate_title" />
+
+        <SwitchPreference
+            android:key="disable_live_room_double_click"
+            android:summary="@string/disable_live_room_double_click_summary"
+            android:title="@string/disable_live_room_double_click_title" />
     </PreferenceCategory>
     <PreferenceCategory android:title="@string/pref_backup">
         <Preference
@@ -345,6 +350,11 @@
             android:summary="@string/remove_video_relate_only_av_summary"
             android:title="@string/remove_video_relate_only_av_title" />
         <SwitchPreference
+            android:dependency="remove_video_relate_only_av"
+            android:key="remove_video_relate_nothing"
+            android:summary="@string/remove_video_relate_nothing_summary"
+            android:title="@string/remove_video_relate_nothing_title" />
+        <SwitchPreference
             android:dependency="hidden"
             android:key="remove_video_cmd_dms"
             android:summary="@string/remove_video_cmd_dms_summary"
@@ -360,6 +370,14 @@
             android:key="block_up_rcmd_ads"
             android:summary="@string/block_up_rcmd_ads_summary"
             android:title="@string/block_up_rcmd_ads_title" />
+
+        <MultiSelectListPreference
+            android:dependency="hidden"
+            android:entries="@array/live_popup_entries"
+            android:entryValues="@array/live_popup_values"
+            android:key="purify_live_popups"
+            android:summary="@string/purify_live_popups_summary"
+            android:title="@string/purify_live_popups_title" />
     </PreferenceCategory>
 
     <PreferenceCategory
