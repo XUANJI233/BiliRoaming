@@ -13,6 +13,7 @@ class ProtoBufHook(classLoader: ClassLoader) : BaseHook(classLoader) {
         val purifySearch = sPrefs.getBoolean("purify_search", false)
         val purifyCampus = sPrefs.getBoolean("purify_campus", false)
         val blockWordSearch = sPrefs.getBoolean("block_word_search", false)
+        val blockModules = sPrefs.getBoolean("block_modules", false)
 
         if (hidden && (purifyCity || purifyCampus)) {
             listOf(
@@ -88,6 +89,15 @@ class ProtoBufHook(classLoader: ClassLoader) : BaseHook(classLoader) {
                             }
                     }
                 }
+            }
+        }
+        if (hidden && blockModules) {
+            "com.bapis.bilibili.app.resource.v1.ModuleMoss".hookAfterMethod(
+                mClassLoader,
+                "list",
+                "com.bapis.bilibili.app.resource.v1.ListReq"
+            ) {
+                it.result.callMethod("clearPools")
             }
         }
     }
