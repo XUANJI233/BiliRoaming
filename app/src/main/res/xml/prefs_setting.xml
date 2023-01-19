@@ -179,6 +179,10 @@
             android:key="disable_live_room_double_click"
             android:summary="@string/disable_live_room_double_click_summary"
             android:title="@string/disable_live_room_double_click_title" />
+
+        <SwitchPreference
+            android:key="block_update"
+            android:title="@string/block_update_title" />
     </PreferenceCategory>
     <PreferenceCategory android:title="@string/pref_backup">
         <Preference
@@ -383,6 +387,10 @@
             android:key="block_modules"
             android:summary="@string/block_modules_summary"
             android:title="@string/block_modules_title" />
+        <SwitchPreference
+            android:key="remove_vip_section"
+            android:summary="@string/remove_vip_section_summary"
+            android:title="@string/remove_vip_section_title" />
     </PreferenceCategory>
 
     <PreferenceCategory

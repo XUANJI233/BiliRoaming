@@ -109,7 +109,6 @@ class BiliBiliPackage constructor(private val mClassLoader: ClassLoader, mContex
     val storyVideoActivityClass by Weak { "com.bilibili.video.story.StoryVideoActivity" from mClassLoader }
     val okioWrapperClass by Weak { mHookInfo.okio.class_ from mClassLoader }
     val ellipsizingTextViewClass by Weak { "com.bilibili.bplus.followingcard.widget.EllipsizingTextView" from mClassLoader }
-    val dynamicDescHolderListenerClass by Weak { mHookInfo.dynDescHolderListener from mClassLoader }
     val shareClickResultClass by Weak { "com.bilibili.lib.sharewrapper.online.api.ShareClickResult" from mClassLoader }
     val backgroundPlayerClass by Weak { mHookInfo.musicNotification.backgroundPlayer from mClassLoader }
     val playerServiceClass by Weak { mHookInfo.musicNotification.playerService from mClassLoader }
@@ -142,6 +141,8 @@ class BiliBiliPackage constructor(private val mClassLoader: ClassLoader, mContex
     val subtitleConfigChangeClass by Weak { "tv.danmaku.biliplayerv2.service.interact.biz.chronos.chronosrpc.methods.send.DanmakuConfigChange\$SubtitleConfig" from mClassLoader }
     val liveRoomPlayerViewClass by Weak { "com.bilibili.bililive.room.ui.roomv3.player.container.LiveRoomPlayerContainerView" from mClassLoader }
     val biliConfigClass by Weak { mHookInfo.biliConfig.class_ from mClassLoader }
+    val updateInfoSupplierClass by Weak { mHookInfo.updateInfoSupplier.class_ from mClassLoader }
+    val latestVersionExceptionClass by Weak { "tv.danmaku.bili.update.internal.exception.LatestVersionException" from mClassLoader }
 
     val ids: Map<String, Int> by lazy {
         mHookInfo.mapIds.idsMap
@@ -277,6 +278,11 @@ class BiliBiliPackage constructor(private val mClassLoader: ClassLoader, mContex
     fun onOperateClick() = mHookInfo.onOperateClick.orNull
 
     fun getContentString() = mHookInfo.getContentString.orNull
+
+    fun check() = mHookInfo.updateInfoSupplier.check.orNull
+
+    fun dynamicDescHolderListeners() =
+        mHookInfo.dynDescHolderListenerList.map { it.from(mClassLoader) }
 
     private fun readHookInfo(context: Context): Configs.HookInfo {
         try {
@@ -1535,17 +1541,10 @@ class BiliBiliPackage constructor(private val mClassLoader: ClassLoader, mContex
                 } ?: return@okIOBuffer
                 readFrom = method { name = okioReadFromMethod.name }
             }
-            dynDescHolderListener = class_ {
-                name = classesList.filter {
-                    it.startsWith("com.bilibili.bplus.followinglist.module.item")
-                }.firstOrNull { c ->
-                    c.findClass(classloader).run {
-                        declaredMethods.count {
-                            it.name == "onLongClick"
-                        } == 1
-                    }
-                } ?: return@class_
-            }
+            classesList.filter {
+                it.startsWith("com.bilibili.bplus.followinglist.module.item")
+                        && View.OnLongClickListener::class.java.isAssignableFrom(it.on(classloader))
+            }.let { l -> dynDescHolderListener.addAll(l.toList().map { class_ { name = it } }) }
             descCopy = descCopy {
                 val descViewHolderClass = dexHelper.findMethodUsingString(
                     "AV%d",
@@ -1834,6 +1833,24 @@ class BiliBiliPackage constructor(private val mClassLoader: ClassLoader, mContex
                 name = liveVerticalPagerView.declaredFields.find {
                     View::class.java.isAssignableFrom(it.type)
                 }?.type?.name ?: return@class_
+            }
+            updateInfoSupplier = updateInfoSupplier {
+                val checkMethod = dexHelper.findMethodUsingString(
+                    "Do sync http request.",
+                    false,
+                    -1,
+                    -1,
+                    null,
+                    -1,
+                    null,
+                    null,
+                    null,
+                    true
+                ).firstOrNull()?.let {
+                    dexHelper.decodeMethodIndex(it)
+                } ?: return@updateInfoSupplier
+                class_ = class_ { name = checkMethod.declaringClass.name }
+                check = method { name = checkMethod.name }
             }
 
             dexHelper.close()
