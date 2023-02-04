@@ -3,14 +3,14 @@ import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.internal.storage.file.FileRepository
 
 buildscript {
-    val kotlinVersion by extra("1.7.21")
+    val kotlinVersion by extra("1.8.0")
     val protobufVersion by extra("3.21.12")
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        classpath("com.android.tools.build:gradle:7.4.0")
+        classpath("com.android.tools.build:gradle:7.4.1")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
         classpath("com.google.protobuf:protobuf-gradle-plugin:0.9.1")
         classpath("org.eclipse.jgit:org.eclipse.jgit:6.3.0.202209071007-r")
