@@ -15,7 +15,7 @@ import java.lang.reflect.Proxy
 class SettingHook(classLoader: ClassLoader) : BaseHook(classLoader) {
     private var startSetting = false
 
-    // override fun startHook() {
+    override fun startHook() {
         // Log.d("startHook: Setting")
 
         // instance.splashActivityClass?.hookBeforeMethod("onCreate", Bundle::class.java) { param ->
@@ -116,7 +116,7 @@ class SettingHook(classLoader: ClassLoader) : BaseHook(classLoader) {
                 // }
             // }
         // }
-    // }
+    }
 
     companion object {
         const val START_SETTING_KEY = "biliroaming_start_setting"
