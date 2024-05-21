@@ -155,7 +155,7 @@ dependencies {
     implementation(libs.androidx.documentfile)
     implementation(libs.cxx)
     implementation 'com.google.firebase:firebase-core:20.0.2'
-    implementation 'com.google.firebase:firebase-messaging:23
+    implementation 'com.google.firebase:firebase-messaging:23'
 }
 
 val adbExecutable: String = androidComponents.sdkComponents.adb.get().asFile.absolutePath
