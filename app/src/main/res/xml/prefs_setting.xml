@@ -247,10 +247,12 @@
             android:summary="@string/disable_auto_refresh_summary"
             android:title="@string/disable_auto_refresh_title" />
 
+        <!--
         <SwitchPreference
             android:key="disable_auto_select"
             android:summary="@string/disable_auto_select_summary"
             android:title="@string/disable_auto_select_title" />
+            -->
 
         <SwitchPreference
             android:key="disable_vip_dm_colorful"
@@ -488,6 +490,11 @@
             android:summary="@string/remove_up_vip_label_summary"
             android:title="@string/remove_up_vip_label_title" />
 
+        <SwitchPreference
+            android:dependency="hidden"
+            android:key="no_live_mask"
+            android:summary="@string/no_live_mask_summary"
+            android:title="@string/no_live_mask_title" />
         <MultiSelectListPreference
             android:dependency="hidden"
             android:entries="@array/live_popup_entries"
