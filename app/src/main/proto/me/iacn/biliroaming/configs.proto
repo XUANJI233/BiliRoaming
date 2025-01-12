@@ -156,6 +156,9 @@ message SignQuery {
 message Section {
   optional Class class = 1;
   optional Method like = 2;
+  optional Class view_holder = 3;
+  optional Method bind_view = 4;
+  optional Method get_root = 5;
 }
 
 message Drawer {
@@ -228,6 +231,15 @@ message PlayerSettingHelper {
   optional Method get_default_qn = 2;
 }
 
+message AutoSupremumQuality {
+  optional Class class = 1;
+}
+
+message QualityStrategyProvider {
+  optional Class class = 1;
+  optional Method selectQuality = 2;
+}
+
 message LiveRtcHelper {
   optional Class live_rtc_enable_class = 1;
   optional Method live_rtc_enable_method = 2;
@@ -252,6 +264,15 @@ message Comment3Copy {
   optional Class class = 1;
   optional Method method = 2;
   optional int32 comment3ViewIndex = 3;
+}
+
+message Continuation {
+  optional Class class = 1;
+}
+
+message VipQualityTrialService {
+  optional Class class = 1;
+  optional Method canTrial = 2;
 }
 
 message HookInfo {
@@ -295,7 +316,6 @@ message HookInfo {
   optional KanBan kan_ban = 67;
   optional ToastHelper toast_helper = 68;
   optional Class brotli_input_stream = 69;
-  optional Method can_try_watch_vip_quality = 70;
   repeated PlayerFullStoryWidget player_full_story_widget = 71;
   optional BiliCall bili_call = 72;
   optional Class comment_long_click_new = 73;
@@ -316,4 +336,8 @@ message HookInfo {
   optional Comment3Copy comment3_copy = 91;
   repeated PlayerQualityService player_quality_service = 92;
   optional Class play_speed_manager = 93;
+  optional AutoSupremumQuality autoSupremumQuality = 94;
+  optional QualityStrategyProvider qualityStrategyProvider = 95;
+  optional Continuation continuation = 96;
+  optional VipQualityTrialService vipQualityTrialService = 97;
 }
